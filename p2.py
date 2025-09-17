@@ -82,8 +82,59 @@ class BeamformingSimulator:
         self.btn_analysis_ax = plt.axes([0.82, 0.43, 0.12, 0.04])
         self.btn_analysis = Button(self.btn_analysis_ax, 'Análisis detallado', color='lightblue')
         self.btn_analysis.on_clicked(self.show_detailed_analysis)
+
+        # Nuevo botón de gráficas de resultados
+        self.btn_graph_ax = plt.axes([0.82, 0.38, 0.12, 0.04])
+        self.btn_graph = Button(self.btn_graph_ax, 'Ver gráficas', color='lightcoral')
+        self.btn_graph.on_clicked(self.show_graphs)
         
         self.update_display()
+
+    def show_graphs(self, event):
+        """Muestra una ventana con gráficas de métricas en función de la distancia y frecuencia"""
+        config = self.configs[self.current_tech]
+        f_min, f_max = config["freq_range"]
+        bw = config["bandwidth"]
+        ptx = config["max_power"]
+        n = config["antenna_elements"]
+
+        # Distancias y frecuencias de prueba
+        distances = np.linspace(50, config["max_distance"], 200)
+        freqs = np.linspace(f_min, f_max, 200)
+
+        # Path loss vs distancia
+        path_loss = 32.4 + 20 * np.log10(freqs[0] * 1000) + 20 * np.log10(distances / 1000)
+        beamforming_gain = 10 * np.log10(n)
+        rx_power = ptx - path_loss + beamforming_gain
+
+        # Data rate vs frecuencia
+        path_loss_f = 32.4 + 20 * np.log10(freqs * 1000) + 20 * np.log10(self.distance / 1000)
+        rx_power_f = ptx - path_loss_f + beamforming_gain
+        snr_f = np.maximum(0, rx_power_f + 30)
+        spectral_efficiency = np.log2(1 + 10 ** (snr_f / 10))
+        data_rate_f = bw * spectral_efficiency
+
+        # --- Ventana de gráficas ---
+        fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+        fig.suptitle(f"📊 Gráficas de desempeño - {self.current_tech}",
+                     fontsize=14, fontweight="bold", color="navy")
+
+        # RX Power vs distancia
+        axs[0].plot(distances, rx_power, color="green", lw=2)
+        axs[0].set_title("Potencia recibida vs distancia")
+        axs[0].set_xlabel("Distancia (m)")
+        axs[0].set_ylabel("Potencia recibida (dBm)")
+        axs[0].grid(True, alpha=0.3)
+
+        # Data rate vs frecuencia
+        axs[1].plot(freqs, data_rate_f, color="purple", lw=2)
+        axs[1].set_title("Tasa de datos vs frecuencia")
+        axs[1].set_xlabel("Frecuencia (GHz)")
+        axs[1].set_ylabel("Tasa de datos (Mbps)")
+        axs[1].grid(True, alpha=0.3)
+
+        plt.tight_layout(rect=[0, 0, 1, 0.95])
+        plt.show()
         
     def create_visual_elements(self):
         self.base_station = Rectangle((0, -5), 10, 10, 
