@@ -98,40 +98,61 @@ class BeamformingSimulator:
         ptx = config["max_power"]
         n = config["antenna_elements"]
 
-        # Distancias y frecuencias de prueba
+        # Rango de distancias y frecuencias
         distances = np.linspace(50, config["max_distance"], 200)
         freqs = np.linspace(f_min, f_max, 200)
 
-        # Path loss vs distancia
+        # --- 1) RX Power vs distancia ---
         path_loss = 32.4 + 20 * np.log10(freqs[0] * 1000) + 20 * np.log10(distances / 1000)
         beamforming_gain = 10 * np.log10(n)
         rx_power = ptx - path_loss + beamforming_gain
 
-        # Data rate vs frecuencia
+        # --- 2) Data rate vs frecuencia ---
         path_loss_f = 32.4 + 20 * np.log10(freqs * 1000) + 20 * np.log10(self.distance / 1000)
         rx_power_f = ptx - path_loss_f + beamforming_gain
         snr_f = np.maximum(0, rx_power_f + 30)
-        spectral_efficiency = np.log2(1 + 10 ** (snr_f / 10))
-        data_rate_f = bw * spectral_efficiency
+        spectral_efficiency_f = np.log2(1 + 10 ** (snr_f / 10))
+        data_rate_f = bw * spectral_efficiency_f
+
+        # --- 3) SNR vs distancia ---
+        snr_dist = np.maximum(0, rx_power + 30)
+
+        # --- 4) Eficiencia espectral vs SNR ---
+        snr_range = np.linspace(0, 40, 200)  # 0 a 40 dB
+        spectral_efficiency_curve = np.log2(1 + 10 ** (snr_range / 10))
 
         # --- Ventana de gráficas ---
-        fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+        fig, axs = plt.subplots(2, 2, figsize=(12, 8))
         fig.suptitle(f"📊 Gráficas de desempeño - {self.current_tech}",
                      fontsize=14, fontweight="bold", color="navy")
 
-        # RX Power vs distancia
-        axs[0].plot(distances, rx_power, color="green", lw=2)
-        axs[0].set_title("Potencia recibida vs distancia")
-        axs[0].set_xlabel("Distancia (m)")
-        axs[0].set_ylabel("Potencia recibida (dBm)")
-        axs[0].grid(True, alpha=0.3)
+        # (1) RX Power vs distancia
+        axs[0, 0].plot(distances, rx_power, color="green", lw=2)
+        axs[0, 0].set_title("Potencia recibida vs distancia")
+        axs[0, 0].set_xlabel("Distancia (m)")
+        axs[0, 0].set_ylabel("Potencia recibida (dBm)")
+        axs[0, 0].grid(True, alpha=0.3)
 
-        # Data rate vs frecuencia
-        axs[1].plot(freqs, data_rate_f, color="purple", lw=2)
-        axs[1].set_title("Tasa de datos vs frecuencia")
-        axs[1].set_xlabel("Frecuencia (GHz)")
-        axs[1].set_ylabel("Tasa de datos (Mbps)")
-        axs[1].grid(True, alpha=0.3)
+        # (2) Data rate vs frecuencia
+        axs[0, 1].plot(freqs, data_rate_f, color="purple", lw=2)
+        axs[0, 1].set_title("Tasa de datos vs frecuencia")
+        axs[0, 1].set_xlabel("Frecuencia (GHz)")
+        axs[0, 1].set_ylabel("Tasa de datos (Mbps)")
+        axs[0, 1].grid(True, alpha=0.3)
+
+        # (3) SNR vs distancia
+        axs[1, 0].plot(distances, snr_dist, color="blue", lw=2)
+        axs[1, 0].set_title("SNR vs distancia")
+        axs[1, 0].set_xlabel("Distancia (m)")
+        axs[1, 0].set_ylabel("SNR (dB)")
+        axs[1, 0].grid(True, alpha=0.3)
+
+        # (4) Eficiencia espectral vs SNR
+        axs[1, 1].plot(snr_range, spectral_efficiency_curve, color="red", lw=2)
+        axs[1, 1].set_title("Eficiencia espectral vs SNR")
+        axs[1, 1].set_xlabel("SNR (dB)")
+        axs[1, 1].set_ylabel("bps/Hz")
+        axs[1, 1].grid(True, alpha=0.3)
 
         plt.tight_layout(rect=[0, 0, 1, 0.95])
         plt.show()
